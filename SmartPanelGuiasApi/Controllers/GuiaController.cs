@@ -35,6 +35,63 @@ namespace SmartPanelGuiasApi.Controllers
             return Ok(_mapper.Map<GuiaDto>(guia));
         }
 
+
+        // ===========================
+        // PRUEBAS DE ERROR DEL SISTEMA
+        // ===========================
+
+        // 🔥 PRUEBA 500 - ERROR INTERNO DEL SERVIDOR
+        // Lanza una excepción manual para comprobar que el middleware
+        // captura y retorna correctamente un status 500.
+        [HttpGet("error-test")]
+        public IActionResult ErrorTest()
+        {
+            throw new Exception("Prueba de excepción manual");
+        }
+
+
+
+        // 🚫 PRUEBA 404 - RECURSO NO ENCONTRADO
+        // Esta ruta NO existe en ningún método del controlador
+        // por lo que intentar acceder a:
+        //   GET /api/guia/no-existe-404
+        // devolverá un 404 automáticamente.
+        [HttpGet("no-existe-404")]
+        public IActionResult NotFoundTest()
+        {
+            return NotFound("Ruta utilizada solo para probar el 404");
+        }
+
+
+
+        // 🔒 PRUEBA 401 - NO AUTORIZADO
+        // Simula que el usuario no tiene autorización.
+        // Esto devuelve un 401 para comprobar cómo lo maneja el middleware.
+        [HttpGet("unauthorized-test")]
+        public IActionResult UnauthorizedTest()
+        {
+            return Unauthorized("No tienes permisos para acceder a esta prueba");
+        }
+
+
+
+        // ❗ PRUEBA 400 - BAD REQUEST
+        // Útil para verificar que el middleware maneja errores de validación.
+        // Ejemplo:
+        //   GET /api/guia/bad-request?valor=0
+        //
+        // Si valor == 0 → retorna un 400 BadRequest
+        [HttpGet("bad-request")]
+        public IActionResult BadRequestTest(int valor)
+        {
+            if (valor == 0)
+            {
+                return BadRequest("El valor no puede ser 0 — prueba de BAD REQUEST (400)");
+            }
+
+            return Ok($"Valor recibido correctamente: {valor}");
+        }
+
         [HttpPost]
         public IActionResult Create([FromBody] GuiaCreateDto dto)
         {
