@@ -1,13 +1,15 @@
 using Microsoft.OpenApi;
+using SmartPanelGuiasApi.Middleware;
 using SmartPanelGuiasApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// CORS para Blazor
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorDev", policy =>
     {
-        policy.WithOrigins("https://localhost:7053")
+        policy.WithOrigins("https://localhost:7215")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -29,6 +31,10 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+// Middleware global de errores
+app.UseMiddleware<ErrorHandlingMiddleware>();
+
+// CORS
 app.UseCors("AllowBlazorDev");
 
 app.UseSwagger();

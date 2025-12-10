@@ -36,6 +36,15 @@ namespace SmartPanelGuiasApi.Controllers
         }
 
 
+        [HttpGet("nextfolio/{tipo}")]
+        public IActionResult GetNextFolio(string tipo)
+        {
+            int maxFolio = _service.GetMaxFolioByTipo(tipo);
+            return Ok(new { Folio = maxFolio + 1 }); // ✅ Devuelve un objeto con propiedad "Folio"
+        }
+
+
+
         // ===========================
         // PRUEBAS DE ERROR DEL SISTEMA
         // ===========================
