@@ -15,10 +15,16 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Tus servicios actuales
 builder.Services.AddScoped<GuiaService>();
+
+// Agregamos AuthService para login simple
+builder.Services.AddScoped<AuthService>();
+
 builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddControllers();
 
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -37,11 +43,13 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 // CORS
 app.UseCors("AllowBlazorDev");
 
+// Swagger UI
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();

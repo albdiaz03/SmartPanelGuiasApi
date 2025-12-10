@@ -1,43 +1,38 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
+using SmartPanelGuiasApi.Models;
+using SmartPanelGuiasApi.Services;
 
-[Route("api/auth")]
-[ApiController]
-public class AuthController : ControllerBase
+namespace SmartPanelGuiasApi.Controllers
 {
-    [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest req)
+    [ApiController]
+    [Route("api/[controller]")]
+    public class AuthController : ControllerBase
     {
-        if (req.Usuario != "admin" || req.Password != "1234")
-            return Unauthorized();
+        private readonly AuthService _auth;
 
-        var key = Encoding.UTF8.GetBytes("ESTA_ES_LA_LLAVE_SECRETA_123");
-
-        var tokenDescriptor = new SecurityTokenDescriptor
+        public AuthController(AuthService auth)
         {
-            Subject = new ClaimsIdentity(new Claim[]
+            _auth = auth;
+        }
+
+        [HttpPost("login")]
+        public ActionResult<LoginResponse> Login(LoginRequest request)
+        {
+            if (_auth.ValidarUsuario(request.Usuario, request.Password))
             {
-                new Claim(ClaimTypes.Name, req.Usuario)
-            }),
-            Expires = DateTime.UtcNow.AddHours(1),
-            Issuer = "smartpanel",
-            Audience = "smartpanel",
-            SigningCredentials =
-                new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-        };
+                return Ok(new LoginResponse
+                {
+                    Ok = true,
+                    Mensaje = "Login correcto",
+                    Nombre = request.Usuario
+                });
+            }
 
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var token = tokenHandler.CreateToken(tokenDescriptor);
-
-        return Ok(tokenHandler.WriteToken(token));
+            return Unauthorized(new LoginResponse
+            {
+                Ok = false,
+                Mensaje = "Usuario o contraseña incorrectos"
+            });
+        }
     }
-}
-
-public class LoginRequest
-{
-    public string Usuario { get; set; }
-    public string Password { get; set; }
 }
