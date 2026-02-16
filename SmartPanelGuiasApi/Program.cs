@@ -1,10 +1,13 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using SmartPanelGuiasApi.Middleware;
 using SmartPanelGuiasApi.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CORS para Blazor
+// ?? CORS para Blazor
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorDev", policy =>
@@ -15,16 +18,32 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Tus servicios actuales
+// ?? Servicios
 builder.Services.AddScoped<GuiaService>();
-
-// Agregamos AuthService para login simple
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
+
+// ?? JWT
+var key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey =
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key))
+        };
+    });
+
 builder.Services.AddControllers();
 
-// Swagger
+// ?? Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -37,18 +56,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Middleware global de errores
+// ?? Middleware global de errores
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
-// CORS
+app.UseHttpsRedirection();
+
 app.UseCors("AllowBlazorDev");
 
-// Swagger UI
+app.UseAuthentication();   // ?? SIEMPRE antes
+app.UseAuthorization();    // ?? SOLO UNA VEZ
+
 app.UseSwagger();
 app.UseSwaggerUI();
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
 
 app.MapControllers();
 

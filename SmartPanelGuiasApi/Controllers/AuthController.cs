@@ -8,30 +8,27 @@ namespace SmartPanelGuiasApi.Controllers
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
-        private readonly AuthService _auth;
+        private readonly AuthService _authService;
 
-        public AuthController(AuthService auth)
+        public AuthController(AuthService authService)
         {
-            _auth = auth;
+            _authService = authService;
         }
 
         [HttpPost("login")]
-        public ActionResult<LoginResponse> Login(LoginRequest request)
+        public IActionResult Login(LoginRequest request)
         {
-            if (_auth.ValidarUsuario(request.Usuario, request.Password))
-            {
-                return Ok(new LoginResponse
-                {
-                    Ok = true,
-                    Mensaje = "Login correcto",
-                    Nombre = request.Usuario
-                });
-            }
+            var token = _authService.Login(request.Correo, request.Password);
 
-            return Unauthorized(new LoginResponse
+
+            if (token == null)
+                return Unauthorized("Credenciales inválidas");
+
+            return Ok(new LoginResponse
             {
-                Ok = false,
-                Mensaje = "Usuario o contraseña incorrectos"
+                Ok = true,
+                Mensaje = "Login correcto",
+                Token = token
             });
         }
     }

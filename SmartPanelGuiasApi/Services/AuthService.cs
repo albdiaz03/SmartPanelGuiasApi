@@ -1,17 +1,86 @@
-﻿namespace SmartPanelGuiasApi.Services
+﻿using Microsoft.Data.SqlClient;
+using SmartPanelGuiasApi.Models;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using SmartPanelGuiasApi.Conexion;   // 🔥 ESTE using ES CLAVE
+using Microsoft.Data.SqlClient;
+using CryptSharp;
+
+
+
+namespace SmartPanelGuiasApi.Services
 {
     public class AuthService
     {
-        // Usuarios de prueba (lo puedes cambiar por DB después)
-        private static readonly Dictionary<string, string> Usuarios = new()
-        {
-            { "admin", "1234" },
-            { "beto", "5678" }
-        };
+        private readonly string _key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
 
-        public bool ValidarUsuario(string usuario, string password)
+        public string Login(string correo, string password)
         {
-            return Usuarios.ContainsKey(usuario) && Usuarios[usuario] == password;
+            Usuario usuario = null;
+
+            using (SqlConnection conn = SmartPanelGuiasApi.Conexion.Conexion.GetConnection())
+
+            {
+                conn.Open();
+
+                string query = "SELECT * FROM dbo.usuario WHERE correo = @correo";
+
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@correo", correo);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            usuario = new Usuario
+                            {
+                                id_usuario = Convert.ToInt32(reader["id_usuario"]),
+                                nombre = reader["nombre"]?.ToString(),
+                                correo = reader["correo"]?.ToString(),
+                                password = reader["password"]?.ToString(),
+                                estado = Convert.ToInt32(reader["estado"]),
+                                id_privilegio = Convert.ToInt32(reader["id_privilegio"])
+                            };
+                        }
+                    }
+                }
+            }
+
+            // 🔴 No existe usuario
+            if (usuario == null)
+                return null;
+
+            // 🔐 Validar contraseña
+            if (!Crypter.CheckPassword(password, usuario.password))
+                return null;
+
+            // 🚦 Validar estado
+            if (usuario.estado == 1)
+                return null;
+
+            // 🎟 Crear JWT
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, usuario.id_usuario.ToString()),
+                new Claim(ClaimTypes.Name, usuario.nombre ?? ""),
+                new Claim(ClaimTypes.Email, usuario.correo ?? ""),
+                new Claim("Privilegio", usuario.id_privilegio.ToString())
+            };
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddHours(4),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }
