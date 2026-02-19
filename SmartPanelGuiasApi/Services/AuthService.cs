@@ -20,7 +20,7 @@ namespace SmartPanelGuiasApi.Services
         {
             Usuario usuario = null;
 
-            using (SqlConnection conn = SmartPanelGuiasApi.Conexion.Conexion.GetConnection())
+            using (SqlConnection conn = SmartPanelGuiasApi.Conexion.Conexion.GetSmartPanelConnection())
 
             {
                 conn.Open();

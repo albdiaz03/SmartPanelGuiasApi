@@ -11,7 +11,7 @@ namespace SmartPanelGuiasApi.Services
         {
             var lista = new List<Guia>();
 
-            using (var conn = SmartPanelGuiasApi.Conexion.Conexion.GetConnection())
+            using (var conn = SmartPanelGuiasApi.Conexion.Conexion.GetSoftlandConnection())
             {
                 conn.Open();
                 var cmd = new SqlCommand("SELECT NroInt, Tipo, Folio, Fecha, Descripcion FROM iw_gsaen", conn);
@@ -38,7 +38,7 @@ namespace SmartPanelGuiasApi.Services
         {
             Guia guia = null;
 
-            using (var conn = Conexion.Conexion.GetConnection())
+            using (var conn = Conexion.Conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
@@ -70,7 +70,7 @@ namespace SmartPanelGuiasApi.Services
 
         public void Create(Guia g)
         {
-            using (var conn = Conexion.Conexion.GetConnection())
+            using (var conn = Conexion.Conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
@@ -103,7 +103,7 @@ namespace SmartPanelGuiasApi.Services
 
         public int GetMaxFolioByTipo(string tipo)
         {
-            using var conn = Conexion.Conexion.GetConnection();
+            using var conn = Conexion.Conexion.GetSoftlandConnection();
             conn.Open();
 
             var cmd = new SqlCommand(
@@ -120,7 +120,7 @@ namespace SmartPanelGuiasApi.Services
 
         public void Update(Guia g)
         {
-            using (var conn = Conexion.Conexion.GetConnection())
+            using (var conn = Conexion.Conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
@@ -142,7 +142,7 @@ namespace SmartPanelGuiasApi.Services
 
         public void Delete(int id)
         {
-            using (var conn = Conexion.Conexion.GetConnection())
+            using (var conn = Conexion.Conexion.GetSoftlandConnection())
             {
                 conn.Open();
 

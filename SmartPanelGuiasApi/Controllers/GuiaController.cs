@@ -1,23 +1,56 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SmartPanelGuiasApi.Dtos;
 using SmartPanelGuiasApi.Models;
 using SmartPanelGuiasApi.Services;
+using System.Security.Claims;
+
+using SmartPanelGuiasApi.Helpers;
+
 
 namespace SmartPanelGuiasApi.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class GuiaController : ControllerBase
     {
         private readonly GuiaService _service;
         private readonly IMapper _mapper;
+        private readonly LogService _logService;
 
-        public GuiaController(GuiaService service, IMapper mapper)
+        public GuiaController(GuiaService service, IMapper mapper, LogService logService)
         {
             _service = service;
             _mapper = mapper;
+            _logService = logService;
         }
+
+        // =============================
+        // MÉTODO PRIVADO DE AUDITORÍA
+        // =============================
+        private async Task RegistrarAuditoria(string accion, string descripcion)
+        {
+            var idUsuarioClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(idUsuarioClaim))
+                return;
+
+            var idUsuario = int.Parse(idUsuarioClaim);
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var navegador = Request.Headers["User-Agent"].ToString();
+
+            await _logService.RegistrarLog(
+                idUsuario,
+                accion,
+                descripcion,
+                ip,
+                navegador
+            );
+        }
+
+
 
         [HttpGet]
         public IActionResult GetAll()
@@ -34,7 +67,6 @@ namespace SmartPanelGuiasApi.Controllers
 
             return Ok(_mapper.Map<GuiaDto>(guia));
         }
-
 
         [HttpGet("nextfolio/{tipo}")]
         public IActionResult GetNextFolio(string tipo)
@@ -102,32 +134,88 @@ namespace SmartPanelGuiasApi.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create([FromBody] GuiaCreateDto dto)
+        public async Task<IActionResult> Create([FromBody] GuiaCreateDto dto)
         {
             var guia = _mapper.Map<Guia>(dto);
             _service.Create(guia);
+
+            await RegistrarAuditoria(
+                "Crear guía",
+                $"Se creó la guía con folio {guia.Folio}"
+            );
+
             return Ok();
         }
 
+
         [HttpPut("{id}")]
-        public IActionResult Update(int id, [FromBody] GuiaUpdateDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] GuiaUpdateDto dto)
         {
             var guia = _service.Get(id);
             if (guia == null) return NotFound();
 
+            Console.WriteLine("========= DEBUG UPDATE =========");
+            Console.WriteLine($"ANTES MAP - BD Descripcion: {guia.Descripcion}");
+            Console.WriteLine($"DTO Descripcion: {dto.Descripcion}");
+            Console.WriteLine($"ANTES MAP - BD Fecha: {guia.Fecha}");
+            Console.WriteLine($"DTO Fecha: {dto.Fecha}");
+            Console.WriteLine("================================");
+
+            // 🔹 Clonar estado original
+            var guiaOriginal = new Guia
+            {
+                NroInt = guia.NroInt,
+                Tipo = guia.Tipo,
+                Folio = guia.Folio,
+                Fecha = guia.Fecha,
+                Descripcion = guia.Descripcion
+            };
+
+            // 🔹 Aplicar cambios
             _mapper.Map(dto, guia);
+
+            Console.WriteLine("========= DESPUÉS MAP =========");
+            Console.WriteLine($"DESPUÉS MAP - Nueva Descripcion: {guia.Descripcion}");
+            Console.WriteLine($"DESPUÉS MAP - Nueva Fecha: {guia.Fecha}");
+            Console.WriteLine("================================");
+
             _service.Update(guia);
+
+            // 🔹 Detectar cambios
+            var cambios = AuditoriaHelper.ObtenerCambios(guiaOriginal, guia);
+
+            Console.WriteLine("========= CAMBIOS DETECTADOS =========");
+            foreach (var cambio in cambios)
+            {
+                Console.WriteLine(cambio);
+            }
+            Console.WriteLine("======================================");
+
+            if (cambios.Any())
+            {
+                var descripcionLog = $"Se editó la guía ID {id}. {string.Join(" | ", cambios)}";
+                await RegistrarAuditoria("Editar guía", descripcionLog);
+            }
 
             return Ok();
         }
 
+
+
+
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             var guia = _service.Get(id);
             if (guia == null) return NotFound();
 
             _service.Delete(id);
+
+            await RegistrarAuditoria(
+                "Eliminar guía",
+                $"Se eliminó la guía ID {id}"
+            );
+
             return Ok();
         }
     }
