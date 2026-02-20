@@ -25,7 +25,13 @@ namespace SmartPanelGuiasApi.Services
             {
                 conn.Open();
 
-                string query = "SELECT * FROM dbo.usuario WHERE correo = @correo";
+                string query = @"
+SELECT u.*, p.nombre_pri AS rolNombre
+FROM dbo.usuario u
+INNER JOIN dbo.privilegio p 
+    ON u.id_privilegio = p.id_privilegio
+WHERE u.correo = @correo";
+
 
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -43,8 +49,10 @@ namespace SmartPanelGuiasApi.Services
                                 correo = reader["correo"]?.ToString(),
                                 password = reader["password"]?.ToString(),
                                 estado = Convert.ToInt32(reader["estado"]),
-                                id_privilegio = Convert.ToInt32(reader["id_privilegio"])
+                                id_privilegio = Convert.ToInt32(reader["id_privilegio"]),
+                                rolNombre = reader["rolNombre"]?.ToString()
                             };
+
                         }
                     }
                 }
@@ -63,13 +71,14 @@ namespace SmartPanelGuiasApi.Services
                 return null;
 
             // 🎟 Crear JWT
+
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, usuario.id_usuario.ToString()),
-                new Claim(ClaimTypes.Name, usuario.nombre ?? ""),
-                new Claim(ClaimTypes.Email, usuario.correo ?? ""),
-                new Claim("Privilegio", usuario.id_privilegio.ToString())
-            };
+    new Claim(ClaimTypes.NameIdentifier, usuario.id_usuario.ToString()),
+    new Claim(ClaimTypes.Name, usuario.nombre ?? ""),
+    new Claim(ClaimTypes.Email, usuario.correo ?? ""),
+    new Claim(ClaimTypes.Role, usuario.rolNombre ?? "")
+};
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -81,6 +90,7 @@ namespace SmartPanelGuiasApi.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+
         }
     }
 }

@@ -9,6 +9,10 @@
         public string nombre { get; set; }
         public string correo { get; set; }
         public int estado { get; set; }
+
+        public string rolNombre { get; set; }
+
+
     }
 
 }
