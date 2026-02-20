@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using Microsoft.OpenApi.Models;
 using SmartPanelGuiasApi.Middleware;
 using SmartPanelGuiasApi.Services;
 using System.Security.Claims;
