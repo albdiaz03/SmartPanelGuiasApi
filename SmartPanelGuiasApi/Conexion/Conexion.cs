@@ -1,10 +1,11 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using Microsoft.Data.SqlClient;
 using Npgsql;
 
 namespace SmartPanelGuiasApi.Conexion
 {
-    public class DatabaseConnection
+    public class Conexion
     {
         private readonly string connectionSmartPanelLocal =
             "Server=ALBERTODIAZ\\SQLEXPRESS;Database=interfaceSmartPanel;User Id=sa;Password=admin;Encrypt=True;TrustServerCertificate=True;";
@@ -18,14 +19,28 @@ namespace SmartPanelGuiasApi.Conexion
 
             if (env == "Development")
             {
+                // Local SQL Server
                 return new SqlConnection(connectionSmartPanelLocal);
             }
             else
             {
-                var connectionString =
-                    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+                // Producción -> PostgreSQL (Render)
+                var url = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+                var uri = new Uri(url);
+                var userInfo = uri.UserInfo.Split(':');
 
-                return new NpgsqlConnection(connectionString);
+                var builder = new NpgsqlConnectionStringBuilder
+                {
+                    Host = uri.Host,
+                    Port = uri.Port > 0 ? uri.Port : 5432,
+                    Username = userInfo[0],
+                    Password = userInfo[1],
+                    Database = uri.AbsolutePath.TrimStart('/'),
+                    SslMode = SslMode.Require,
+                    TrustServerCertificate = true
+                };
+
+                return new NpgsqlConnection(builder.ConnectionString);
             }
         }
 
@@ -35,14 +50,28 @@ namespace SmartPanelGuiasApi.Conexion
 
             if (env == "Development")
             {
+                // Local SQL Server
                 return new SqlConnection(connectionSoftlandLocal);
             }
             else
             {
-                var connectionString =
-                    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+                // Producción -> PostgreSQL (Render)
+                var url = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+                var uri = new Uri(url);
+                var userInfo = uri.UserInfo.Split(':');
 
-                return new NpgsqlConnection(connectionString);
+                var builder = new NpgsqlConnectionStringBuilder
+                {
+                    Host = uri.Host,
+                    Port = uri.Port > 0 ? uri.Port : 5432,
+                    Username = userInfo[0],
+                    Password = userInfo[1],
+                    Database = uri.AbsolutePath.TrimStart('/'),
+                    SslMode = SslMode.Require,
+                    TrustServerCertificate = true
+                };
+
+                return new NpgsqlConnection(builder.ConnectionString);
             }
         }
     }
