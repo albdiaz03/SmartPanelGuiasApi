@@ -5,20 +5,23 @@ using SmartPanelGuiasApi.Middleware;
 using SmartPanelGuiasApi.Services;
 using System.Security.Claims;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 using SmartPanelGuiasApi.Conexion;
 
 var builder = WebApplication.CreateBuilder(args);
-var app = builder.Build();
 
+// -------------------
+// ✅ Servicios
+// -------------------
+builder.Services.AddScoped<DbConexion>();       // conexión DB
+builder.Services.AddScoped<AuthService>();      // servicio de auth
+builder.Services.AddScoped<GuiaService>();      // servicio de guías
+builder.Services.AddScoped<LogService>();       // servicio de logs
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<DbConexion>();
-    DbInitializer.Initialize(db);
-}
+builder.Services.AddAutoMapper(typeof(Program));
 
-// ?? CORS para Blazor
+// -------------------
+// ✅ CORS
+// -------------------
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorDev", policy =>
@@ -29,16 +32,10 @@ builder.Services.AddCors(options =>
     });
 });
 
-// ?? Servicios
-builder.Services.AddScoped<DbConexion>(); // 🔹 nueva clase de conexión
-builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<GuiaService>();
-
-builder.Services.AddAutoMapper(typeof(Program));
-
-// ?? JWT
+// -------------------
+// ✅ JWT
+// -------------------
 var key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
-
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -48,17 +45,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey =
-                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
-
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             NameClaimType = ClaimTypes.Name,
             RoleClaimType = ClaimTypes.Role
         };
     });
 
-// ?? Controllers y Swagger
+// -------------------
+// ✅ Controllers & Swagger
+// -------------------
 builder.Services.AddControllers();
-builder.Services.AddScoped<LogService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -69,24 +65,33 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// -------------------
+// 🔹 Construir la app
+// -------------------
 var app = builder.Build();
 
-// ?? Middleware
+// -------------------
+// ✅ Middleware
+// -------------------
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseHttpsRedirection();
 app.UseCors("AllowBlazorDev");
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// ?? POBLAR DB al iniciar (opcional)
+// -------------------
+// 🔹 Inicializar DB
+// -------------------
 using (var scope = app.Services.CreateScope())
 {
     var dbConexion = scope.ServiceProvider.GetRequiredService<DbConexion>();
-    DbInitializer.Initialize(dbConexion); // Esto creará tablas y datos iniciales
+    DbInitializer.Initialize(dbConexion); // crea tablas y datos iniciales
 }
 
+// -------------------
+// 🔹 Mapear controllers y ejecutar
+// -------------------
 app.MapControllers();
 app.Run();
