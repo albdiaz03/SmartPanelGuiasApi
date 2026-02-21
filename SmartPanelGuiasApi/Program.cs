@@ -12,11 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 // -------------------
 // ✅ Servicios
 // -------------------
-builder.Services.AddScoped<DbConexion>();       // conexión DB
-builder.Services.AddScoped<AuthService>();      // servicio de auth
-builder.Services.AddScoped<GuiaService>();      // servicio de guías
-builder.Services.AddScoped<LogService>();       // servicio de logs
-
+builder.Services.AddScoped<DbConexion>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<GuiaService>();
+builder.Services.AddScoped<LogService>();
 builder.Services.AddAutoMapper(typeof(Program));
 
 // -------------------
@@ -33,9 +32,25 @@ builder.Services.AddCors(options =>
 });
 
 // -------------------
-// ✅ JWT
+// ✅ JWT: usar clave local o de entorno en producción
 // -------------------
-var key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
+string env = builder.Environment.EnvironmentName; // "Development", "Production", etc.
+string key;
+
+if (env == "Development")
+{
+    // 🔹 Clave local fija
+    key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
+}
+else
+{
+    // 🔹 Clave de variable de entorno (Render/Producción)
+    key = Environment.GetEnvironmentVariable("JWT_SECRET")
+          ?? throw new Exception("JWT_SECRET no definido en variables de entorno");
+}
+
+var keyBytes = Encoding.UTF8.GetBytes(key);
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -45,14 +60,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
             NameClaimType = ClaimTypes.Name,
             RoleClaimType = ClaimTypes.Role
         };
     });
 
 // -------------------
-// ✅ Controllers & Swagger
+// ✅ Controllers & Swagger con JWT
 // -------------------
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -63,10 +78,32 @@ builder.Services.AddSwaggerGen(c =>
         Title = "SmartPanelGuias API",
         Version = "v1"
     });
+
+    // 🔹 Configuración JWT para Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Ingresa tu token JWT generado por /api/Auth/login"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            new string[] {}
+        }
+    });
 });
 
 // -------------------
-// 🔹 Construir la app
+// 🔹 Construir app
 // -------------------
 var app = builder.Build();
 
@@ -81,10 +118,8 @@ app.UseAuthorization();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-
-
 // -------------------
-// 🔹 Mapear controllers y ejecutar
+// 🔹 Mapear controllers
 // -------------------
 app.MapControllers();
 app.Run();
