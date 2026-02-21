@@ -9,6 +9,14 @@ using Microsoft.EntityFrameworkCore;
 using SmartPanelGuiasApi.Conexion;
 
 var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<DbConexion>();
+    DbInitializer.Initialize(db);
+}
 
 // ?? CORS para Blazor
 builder.Services.AddCors(options =>

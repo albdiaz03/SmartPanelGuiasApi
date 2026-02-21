@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
 using Npgsql;
-using SmartPanelGuiasApi.Conexion;
 
 namespace SmartPanelGuiasApi.Conexion
 {
@@ -14,7 +13,7 @@ namespace SmartPanelGuiasApi.Conexion
 
             using var cmd = conn.CreateCommand();
 
-            // Crear tabla Privilegios si no existe
+            // Privilegios
             cmd.CommandText = @"
 CREATE TABLE IF NOT EXISTS privilegio (
     id_privilegio SERIAL PRIMARY KEY,
@@ -23,7 +22,7 @@ CREATE TABLE IF NOT EXISTS privilegio (
 );";
             cmd.ExecuteNonQuery();
 
-            // Crear tabla Usuarios si no existe
+            // Usuario
             cmd.CommandText = @"
 CREATE TABLE IF NOT EXISTS usuario (
     id_usuario SERIAL PRIMARY KEY,
@@ -36,7 +35,7 @@ CREATE TABLE IF NOT EXISTS usuario (
 );";
             cmd.ExecuteNonQuery();
 
-            // Poblar Privilegios si está vacío
+            // Insertar Privilegios
             cmd.CommandText = "SELECT COUNT(*) FROM privilegio;";
             var count = Convert.ToInt32(cmd.ExecuteScalar());
             if (count == 0)
@@ -48,13 +47,12 @@ VALUES ('Admin', 'Administrador del sistema'),
                 cmd.ExecuteNonQuery();
             }
 
-            // Poblar Usuario de prueba si está vacío
+            // Insertar Usuario de prueba
             cmd.CommandText = "SELECT COUNT(*) FROM usuario;";
             count = Convert.ToInt32(cmd.ExecuteScalar());
             if (count == 0)
             {
                 string passwordHash = CryptSharp.Crypter.Blowfish.Crypt("admin");
-
                 cmd.CommandText = $@"
 INSERT INTO usuario (id_privilegio, rut, password, nombre, correo, estado)
 VALUES (1, '00000000-0', '{passwordHash}', 'Test User', 'test@test.cl', '0');";
