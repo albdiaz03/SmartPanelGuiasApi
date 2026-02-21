@@ -4,7 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using SmartPanelGuiasApi.Conexion;   // 🔥 ESTE using ES CLAVE
+using SmartPanelGuiasApi.Conexion; // 🔹 usar namespace
 using CryptSharp;
 
 namespace SmartPanelGuiasApi.Services
@@ -12,10 +12,9 @@ namespace SmartPanelGuiasApi.Services
     public class AuthService
     {
         private readonly string _key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
-        private readonly DatabaseConnection _conexion;
+        private readonly DbConexion _conexion;
 
-        // Inyectamos la conexión desde Program.cs
-        public AuthService(DatabaseConnection conexion)
+        public AuthService(DbConexion conexion)  // 🔹 constructor inyectado
         {
             _conexion = conexion;
         }
@@ -24,7 +23,6 @@ namespace SmartPanelGuiasApi.Services
         {
             Usuario usuario = null;
 
-            // Usamos la instancia _conexion
             using (var conn = _conexion.GetSmartPanelConnection())
             {
                 conn.Open();
@@ -65,9 +63,7 @@ WHERE u.correo = @correo";
             }
 
             if (usuario == null) return null;
-
             if (!Crypter.CheckPassword(password, usuario.password)) return null;
-
             if (usuario.estado == 1) return null;
 
             var claims = new[]

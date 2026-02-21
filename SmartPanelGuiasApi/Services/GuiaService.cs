@@ -8,12 +8,13 @@ namespace SmartPanelGuiasApi.Services
 {
     public class GuiaService
     {
-        private readonly DatabaseConnection _conexion;
+        private readonly DbConexion _conexion;
 
-        public GuiaService(DatabaseConnection conexion)
+        public GuiaService(DbConexion conexion)
         {
             _conexion = conexion;
         }
+
 
         public List<Guia> GetAll()
         {

@@ -23,13 +23,14 @@ builder.Services.AddCors(options =>
 });
 
 // ?? Servicios
-builder.Services.AddScoped<GuiaService>();
+builder.Services.AddScoped<DbConexion>(); // 🔹 nueva clase
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<GuiaService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
 
 
-builder.Services.AddScoped<DatabaseConnection>();
+
 
 
 
