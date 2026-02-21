@@ -6,8 +6,7 @@ using SmartPanelGuiasApi.Services;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
-using SmartPanelGuiasApi.Conexion; // donde esté tu DbContext
-
+using SmartPanelGuiasApi.Conexion;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,30 +22,11 @@ builder.Services.AddCors(options =>
 });
 
 // ?? Servicios
-builder.Services.AddScoped<DbConexion>(); // 🔹 nueva clase
+builder.Services.AddScoped<DbConexion>(); // 🔹 nueva clase de conexión
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<GuiaService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
-
-
-
-
-
-
-/*builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    if (builder.Environment.IsDevelopment())
-    {
-        options.UseSqlServer(
-            builder.Configuration.GetConnectionString("DefaultConnection"));
-    }
-    else
-    {
-        options.UseNpgsql(
-            builder.Configuration.GetConnectionString("DefaultConnection"));
-    }
-});*/
 
 // ?? JWT
 var key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
@@ -64,18 +44,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
 
             NameClaimType = ClaimTypes.Name,
-            RoleClaimType = ClaimTypes.Role // 🔥 ESTA ES LA CLAVE
+            RoleClaimType = ClaimTypes.Role
         };
     });
 
-
+// ?? Controllers y Swagger
 builder.Services.AddControllers();
-
-// Servicio de log
 builder.Services.AddScoped<LogService>();
-
-
-// ?? Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -88,19 +63,22 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ?? Middleware global de errores
+// ?? Middleware
 app.UseMiddleware<ErrorHandlingMiddleware>();
-
 app.UseHttpsRedirection();
-
 app.UseCors("AllowBlazorDev");
-
-app.UseAuthentication();   // ?? SIEMPRE antes
-app.UseAuthorization();    // ?? SOLO UNA VEZ
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.MapControllers();
+// ?? POBLAR DB al iniciar (opcional)
+using (var scope = app.Services.CreateScope())
+{
+    var dbConexion = scope.ServiceProvider.GetRequiredService<DbConexion>();
+    DbInitializer.Initialize(dbConexion); // Esto creará tablas y datos iniciales
+}
 
+app.MapControllers();
 app.Run();
