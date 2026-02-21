@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
 using SmartPanelGuiasApi.Middleware;
 using SmartPanelGuiasApi.Services;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
+using SmartPanelGuiasApi.Conexion; // donde esté tu DbContext
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +27,25 @@ builder.Services.AddScoped<GuiaService>();
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddAutoMapper(typeof(Program));
+
+
+builder.Services.AddScoped<DatabaseConnection>();
+
+
+
+/*builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("DefaultConnection"));
+    }
+    else
+    {
+        options.UseNpgsql(
+            builder.Configuration.GetConnectionString("DefaultConnection"));
+    }
+});*/
 
 // ?? JWT
 var key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";

@@ -1,32 +1,45 @@
-﻿using Microsoft.Data.SqlClient;
-using SmartPanelGuiasApi.Models;
+﻿using SmartPanelGuiasApi.Models;
+using SmartPanelGuiasApi.Conexion;
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace SmartPanelGuiasApi.Services
 {
     public class GuiaService
     {
+        private readonly DatabaseConnection _conexion;
+
+        public GuiaService(DatabaseConnection conexion)
+        {
+            _conexion = conexion;
+        }
+
         public List<Guia> GetAll()
         {
             var lista = new List<Guia>();
 
-            using (var conn = SmartPanelGuiasApi.Conexion.Conexion.GetSoftlandConnection())
+            using (var conn = _conexion.GetSoftlandConnection())
             {
                 conn.Open();
-                var cmd = new SqlCommand("SELECT NroInt, Tipo, Folio, Fecha, Descripcion FROM iw_gsaen", conn);
-                using (var reader = cmd.ExecuteReader())
+
+                using (var cmd = conn.CreateCommand())
                 {
-                    while (reader.Read())
+                    cmd.CommandText = "SELECT NroInt, Tipo, Folio, Fecha, Descripcion FROM iw_gsaen";
+
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        lista.Add(new Guia
+                        while (reader.Read())
                         {
-                            NroInt = reader.GetInt32(0),
-                            Tipo = reader.GetString(1),
-                            Folio = reader.GetInt32(2),
-                            Fecha = reader.GetDateTime(3),
-                            Descripcion = reader.GetString(4)
-                        });
+                            lista.Add(new Guia
+                            {
+                                NroInt = Convert.ToInt32(reader["NroInt"]),
+                                Tipo = reader["Tipo"]?.ToString(),
+                                Folio = Convert.ToInt32(reader["Folio"]),
+                                Fecha = Convert.ToDateTime(reader["Fecha"]),
+                                Descripcion = reader["Descripcion"]?.ToString()
+                            });
+                        }
                     }
                 }
             }
@@ -38,29 +51,32 @@ namespace SmartPanelGuiasApi.Services
         {
             Guia guia = null;
 
-            using (var conn = Conexion.Conexion.GetSoftlandConnection())
+            using (var conn = _conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
-                var cmd = new SqlCommand(
-                    "SELECT NroInt, Tipo, Folio, Fecha, Descripcion FROM iw_gsaen WHERE NroInt=@id",
-                    conn
-                );
-
-                cmd.Parameters.AddWithValue("@id", id);
-
-                using (var reader = cmd.ExecuteReader())
+                using (var cmd = conn.CreateCommand())
                 {
-                    if (reader.Read())
+                    cmd.CommandText = "SELECT NroInt, Tipo, Folio, Fecha, Descripcion FROM iw_gsaen WHERE NroInt=@id";
+
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "@id";
+                    param.Value = id;
+                    cmd.Parameters.Add(param);
+
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        guia = new Guia
+                        if (reader.Read())
                         {
-                            NroInt = reader.GetInt32(0),
-                            Tipo = reader.GetString(1),
-                            Folio = reader.GetInt32(2),
-                            Fecha = reader.GetDateTime(3),
-                            Descripcion = reader.GetString(4)
-                        };
+                            guia = new Guia
+                            {
+                                NroInt = Convert.ToInt32(reader["NroInt"]),
+                                Tipo = reader["Tipo"]?.ToString(),
+                                Folio = Convert.ToInt32(reader["Folio"]),
+                                Fecha = Convert.ToDateTime(reader["Fecha"]),
+                                Descripcion = reader["Descripcion"]?.ToString()
+                            };
+                        }
                     }
                 }
             }
@@ -70,90 +86,136 @@ namespace SmartPanelGuiasApi.Services
 
         public void Create(Guia g)
         {
-            using (var conn = Conexion.Conexion.GetSoftlandConnection())
+            using (var conn = _conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
-                // Calcular el próximo Folio (por tipo o global)
-                int nextFolio = 1;
-                var cmdFolio = new SqlCommand(
-                    "SELECT ISNULL(MAX(Folio), 0) + 1 FROM iw_gsaen WHERE Tipo=@tipo",
-                    conn
-                );
-                cmdFolio.Parameters.AddWithValue("@tipo", g.Tipo);
+                // IMPORTANTE:
+                // PostgreSQL usa COALESCE, SQL Server usa ISNULL
+                var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+                var maxQuery = env == "Development"
+                    ? "SELECT ISNULL(MAX(Folio), 0) + 1 FROM iw_gsaen WHERE Tipo=@tipo"
+                    : "SELECT COALESCE(MAX(\"Folio\"), 0) + 1 FROM iw_gsaen WHERE \"Tipo\"=@tipo";
 
-                nextFolio = (int)cmdFolio.ExecuteScalar();
-                g.Folio = nextFolio;
+                using (var cmdFolio = conn.CreateCommand())
+                {
+                    cmdFolio.CommandText = maxQuery;
 
-                // Insertar la guía
-                var cmd = new SqlCommand(
-                    "INSERT INTO iw_gsaen (Tipo, Folio, Fecha, Descripcion) VALUES (@tipo, @folio, @fecha, @desc)",
-                    conn
-                );
+                    var paramTipo = cmdFolio.CreateParameter();
+                    paramTipo.ParameterName = "@tipo";
+                    paramTipo.Value = g.Tipo;
+                    cmdFolio.Parameters.Add(paramTipo);
 
-                cmd.Parameters.AddWithValue("@tipo", g.Tipo);
-                cmd.Parameters.AddWithValue("@folio", g.Folio);
-                cmd.Parameters.AddWithValue("@fecha", g.Fecha);
-                cmd.Parameters.AddWithValue("@desc", g.Descripcion);
+                    g.Folio = Convert.ToInt32(cmdFolio.ExecuteScalar());
+                }
 
-                cmd.ExecuteNonQuery();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "INSERT INTO iw_gsaen (Tipo, Folio, Fecha, Descripcion) VALUES (@tipo, @folio, @fecha, @desc)";
+
+                    var p1 = cmd.CreateParameter();
+                    p1.ParameterName = "@tipo";
+                    p1.Value = g.Tipo;
+                    cmd.Parameters.Add(p1);
+
+                    var p2 = cmd.CreateParameter();
+                    p2.ParameterName = "@folio";
+                    p2.Value = g.Folio;
+                    cmd.Parameters.Add(p2);
+
+                    var p3 = cmd.CreateParameter();
+                    p3.ParameterName = "@fecha";
+                    p3.Value = g.Fecha;
+                    cmd.Parameters.Add(p3);
+
+                    var p4 = cmd.CreateParameter();
+                    p4.ParameterName = "@desc";
+                    p4.Value = g.Descripcion;
+                    cmd.Parameters.Add(p4);
+
+                    cmd.ExecuteNonQuery();
+                }
             }
         }
-
 
         public int GetMaxFolioByTipo(string tipo)
         {
-            using var conn = Conexion.Conexion.GetSoftlandConnection();
+            using var conn = _conexion.GetSoftlandConnection();
             conn.Open();
 
-            var cmd = new SqlCommand(
-                "SELECT ISNULL(MAX(Folio), 0) FROM iw_gsaen WHERE Tipo=@tipo",
-                conn
-            );
-            cmd.Parameters.AddWithValue("@tipo", tipo);
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            var query = env == "Development"
+                ? "SELECT ISNULL(MAX(Folio), 0) FROM iw_gsaen WHERE Tipo=@tipo"
+                : "SELECT COALESCE(MAX(\"Folio\"), 0) FROM iw_gsaen WHERE \"Tipo\"=@tipo";
 
-            var maxFolio = (int)cmd.ExecuteScalar();
-            return maxFolio;
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = query;
+
+            var param = cmd.CreateParameter();
+            param.ParameterName = "@tipo";
+            param.Value = tipo;
+            cmd.Parameters.Add(param);
+
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
-
-
 
         public void Update(Guia g)
         {
-            using (var conn = Conexion.Conexion.GetSoftlandConnection())
+            using (var conn = _conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
-                var cmd = new SqlCommand(
-                    "UPDATE iw_gsaen SET Tipo=@tipo, Folio=@folio, Fecha=@fecha, Descripcion=@desc WHERE NroInt=@id",
-                    conn
-                );
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "UPDATE iw_gsaen SET Tipo=@tipo, Folio=@folio, Fecha=@fecha, Descripcion=@desc WHERE NroInt=@id";
 
-                cmd.Parameters.AddWithValue("@id", g.NroInt);
-                cmd.Parameters.AddWithValue("@tipo", g.Tipo);
-                cmd.Parameters.AddWithValue("@folio", g.Folio);
-                cmd.Parameters.AddWithValue("@fecha", g.Fecha);
-                cmd.Parameters.AddWithValue("@desc", g.Descripcion);
+                    var p1 = cmd.CreateParameter();
+                    p1.ParameterName = "@id";
+                    p1.Value = g.NroInt;
+                    cmd.Parameters.Add(p1);
 
-                cmd.ExecuteNonQuery();
+                    var p2 = cmd.CreateParameter();
+                    p2.ParameterName = "@tipo";
+                    p2.Value = g.Tipo;
+                    cmd.Parameters.Add(p2);
+
+                    var p3 = cmd.CreateParameter();
+                    p3.ParameterName = "@folio";
+                    p3.Value = g.Folio;
+                    cmd.Parameters.Add(p3);
+
+                    var p4 = cmd.CreateParameter();
+                    p4.ParameterName = "@fecha";
+                    p4.Value = g.Fecha;
+                    cmd.Parameters.Add(p4);
+
+                    var p5 = cmd.CreateParameter();
+                    p5.ParameterName = "@desc";
+                    p5.Value = g.Descripcion;
+                    cmd.Parameters.Add(p5);
+
+                    cmd.ExecuteNonQuery();
+                }
             }
         }
 
-
         public void Delete(int id)
         {
-            using (var conn = Conexion.Conexion.GetSoftlandConnection())
+            using (var conn = _conexion.GetSoftlandConnection())
             {
                 conn.Open();
 
-                var cmd = new SqlCommand(
-                    "DELETE FROM iw_gsaen WHERE NroInt=@id",
-                    conn
-                );
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "DELETE FROM iw_gsaen WHERE NroInt=@id";
 
-                cmd.Parameters.AddWithValue("@id", id);
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "@id";
+                    param.Value = id;
+                    cmd.Parameters.Add(param);
 
-                cmd.ExecuteNonQuery();
+                    cmd.ExecuteNonQuery();
+                }
             }
         }
     }

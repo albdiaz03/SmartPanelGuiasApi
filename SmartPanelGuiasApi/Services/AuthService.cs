@@ -5,23 +5,27 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using SmartPanelGuiasApi.Conexion;   // 🔥 ESTE using ES CLAVE
-using Microsoft.Data.SqlClient;
 using CryptSharp;
-
-
 
 namespace SmartPanelGuiasApi.Services
 {
     public class AuthService
     {
         private readonly string _key = "ESTA_ES_MI_CLAVE_SUPER_SECRETA_2026";
+        private readonly DatabaseConnection _conexion;
+
+        // Inyectamos la conexión desde Program.cs
+        public AuthService(DatabaseConnection conexion)
+        {
+            _conexion = conexion;
+        }
 
         public string Login(string correo, string password)
         {
             Usuario usuario = null;
 
-            using (SqlConnection conn = SmartPanelGuiasApi.Conexion.Conexion.GetSmartPanelConnection())
-
+            // Usamos la instancia _conexion
+            using (var conn = _conexion.GetSmartPanelConnection())
             {
                 conn.Open();
 
@@ -32,13 +36,16 @@ INNER JOIN dbo.privilegio p
     ON u.id_privilegio = p.id_privilegio
 WHERE u.correo = @correo";
 
-
-
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                using (var cmd = conn.CreateCommand())
                 {
-                    cmd.Parameters.AddWithValue("@correo", correo);
+                    cmd.CommandText = query;
 
-                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    var param = cmd.CreateParameter();
+                    param.ParameterName = "@correo";
+                    param.Value = correo;
+                    cmd.Parameters.Add(param);
+
+                    using (var reader = cmd.ExecuteReader())
                     {
                         if (reader.Read())
                         {
@@ -52,33 +59,24 @@ WHERE u.correo = @correo";
                                 id_privilegio = Convert.ToInt32(reader["id_privilegio"]),
                                 rolNombre = reader["rolNombre"]?.ToString()
                             };
-
                         }
                     }
                 }
             }
 
-            // 🔴 No existe usuario
-            if (usuario == null)
-                return null;
+            if (usuario == null) return null;
 
-            // 🔐 Validar contraseña
-            if (!Crypter.CheckPassword(password, usuario.password))
-                return null;
+            if (!Crypter.CheckPassword(password, usuario.password)) return null;
 
-            // 🚦 Validar estado
-            if (usuario.estado == 1)
-                return null;
-
-            // 🎟 Crear JWT
+            if (usuario.estado == 1) return null;
 
             var claims = new[]
             {
-    new Claim(ClaimTypes.NameIdentifier, usuario.id_usuario.ToString()),
-    new Claim(ClaimTypes.Name, usuario.nombre ?? ""),
-    new Claim(ClaimTypes.Email, usuario.correo ?? ""),
-    new Claim(ClaimTypes.Role, usuario.rolNombre ?? "")
-};
+                new Claim(ClaimTypes.NameIdentifier, usuario.id_usuario.ToString()),
+                new Claim(ClaimTypes.Name, usuario.nombre ?? ""),
+                new Claim(ClaimTypes.Email, usuario.correo ?? ""),
+                new Claim(ClaimTypes.Role, usuario.rolNombre ?? "")
+            };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -90,7 +88,6 @@ WHERE u.correo = @correo";
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
-
         }
     }
 }
