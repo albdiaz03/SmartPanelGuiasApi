@@ -101,13 +101,18 @@ namespace SmartPanelGuiasApi.Services
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "INSERT INTO iw_gsaen (Tipo, Folio, Fecha, Descripcion) VALUES (@tipo, @folio, @fecha, @desc)";
-            cmd.Parameters.AddRange(new[]
+            var parametros = new[]
+{
+    CreateParam(cmd, "@tipo", g.Tipo),
+    CreateParam(cmd, "@folio", g.Folio),
+    CreateParam(cmd, "@fecha", g.Fecha),
+    CreateParam(cmd, "@desc", g.Descripcion)
+};
+
+            foreach (var p in parametros)
             {
-                CreateParam(cmd, "@tipo", g.Tipo),
-                CreateParam(cmd, "@folio", g.Folio),
-                CreateParam(cmd, "@fecha", g.Fecha),
-                CreateParam(cmd, "@desc", g.Descripcion)
-            });
+                cmd.Parameters.Add(p);
+            }
             cmd.ExecuteNonQuery();
         }
 
@@ -141,14 +146,19 @@ namespace SmartPanelGuiasApi.Services
 
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "UPDATE iw_gsaen SET Tipo=@tipo, Folio=@folio, Fecha=@fecha, Descripcion=@desc WHERE NroInt=@id";
-            cmd.Parameters.AddRange(new[]
+            var parametros = new[]
+{
+    CreateParam(cmd, "@id", g.NroInt),
+    CreateParam(cmd, "@tipo", g.Tipo),
+    CreateParam(cmd, "@folio", g.Folio),
+    CreateParam(cmd, "@fecha", g.Fecha),
+    CreateParam(cmd, "@desc", g.Descripcion)
+};
+
+            foreach (var p in parametros)
             {
-                CreateParam(cmd, "@id", g.NroInt),
-                CreateParam(cmd, "@tipo", g.Tipo),
-                CreateParam(cmd, "@folio", g.Folio),
-                CreateParam(cmd, "@fecha", g.Fecha),
-                CreateParam(cmd, "@desc", g.Descripcion)
-            });
+                cmd.Parameters.Add(p);
+            }
 
             cmd.ExecuteNonQuery();
         }

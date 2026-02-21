@@ -81,14 +81,7 @@ app.UseAuthorization();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// -------------------
-// 🔹 Inicializar DB
-// -------------------
-using (var scope = app.Services.CreateScope())
-{
-    var dbConexion = scope.ServiceProvider.GetRequiredService<DbConexion>();
-    DbInitializer.Initialize(dbConexion); // crea tablas y datos iniciales
-}
+
 
 // -------------------
 // 🔹 Mapear controllers y ejecutar
