@@ -23,11 +23,15 @@ builder.Services.AddAutoMapper(typeof(Program));
 // -------------------
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowBlazorDev", policy =>
+    options.AddPolicy("AllowBlazor", policy =>
     {
-        policy.WithOrigins("https://localhost:7215")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+                "https://localhost:7215", // local
+                "http://localhost:7215",
+                "https://smartpanelguiasblazor.onrender.com" // producción
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -112,7 +116,7 @@ var app = builder.Build();
 // -------------------
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseHttpsRedirection();
-app.UseCors("AllowBlazorDev");
+app.UseCors("AllowBlazor");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSwagger();
