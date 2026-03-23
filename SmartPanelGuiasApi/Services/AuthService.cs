@@ -1,9 +1,8 @@
-﻿using CryptSharp;
+﻿using BCrypt.Net;
 using SmartPanelGuiasApi.Conexion;
 using SmartPanelGuiasApi.Helpers;
 using SmartPanelGuiasApi.Models;
 using System.Data;
-using System.IdentityModel.Tokens.Jwt;
 
 namespace SmartPanelGuiasApi.Services
 {
@@ -29,7 +28,7 @@ namespace SmartPanelGuiasApi.Services
             using var reader = cmd.ExecuteReader();
             if (!reader.Read()) return null;
             string hashedPassword = reader.GetString(1);
-            bool valid = Crypter.Blowfish.Crypt(password, hashedPassword) == hashedPassword;
+            bool valid = BCrypt.Net.BCrypt.Verify(password, hashedPassword);
             if (!valid) return null;
             return JwtHelper.GenerateToken(correo);
         }

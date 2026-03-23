@@ -33,7 +33,7 @@ namespace SmartPanelGuiasApi.Controllers
         [HttpGet("hash")]
         public IActionResult GenerarHash([FromQuery] string password)
         {
-            string hash = Crypter.Blowfish.Crypt(password);
+            string hash = BCrypt.Net.BCrypt.HashPassword(password);
             return Ok(new { hash });
         }
     }
