@@ -27,7 +27,7 @@ namespace SmartPanelGuiasApi.Services
             using var reader = cmd.ExecuteReader();
             if (!reader.Read()) return null;
             string hashedPassword = reader.GetString(1);
-            bool valid = BCrypt.Net.BCrypt.Verify(password, hashedPassword, false, BCrypt.Net.HashType.Y);
+            bool valid = BCrypt.Net.BCrypt.Verify(password, hashedPassword);
             if (!valid) return null;
             return JwtHelper.GenerateToken(correo);
         }
