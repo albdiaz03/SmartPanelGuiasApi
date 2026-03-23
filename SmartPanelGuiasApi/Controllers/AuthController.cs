@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using SmartPanelGuiasApi.Models;
 using SmartPanelGuiasApi.Services;
+using CryptSharp;
 
 namespace SmartPanelGuiasApi.Controllers
 {
@@ -19,17 +20,21 @@ namespace SmartPanelGuiasApi.Controllers
         public IActionResult Login(LoginRequest request)
         {
             var token = _authService.Login(request.Correo, request.Password);
-
-
             if (token == null)
                 return Unauthorized("Credenciales inválidas");
-
             return Ok(new LoginResponse
             {
                 Ok = true,
                 Mensaje = "Login correcto",
                 Token = token
             });
+        }
+
+        [HttpGet("hash")]
+        public IActionResult GenerarHash([FromQuery] string password)
+        {
+            string hash = Crypter.Blowfish.Crypt(password);
+            return Ok(new { hash });
         }
     }
 }
